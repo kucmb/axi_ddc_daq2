@@ -14,13 +14,12 @@ add_files -norecurse "./ddc_core.v"
 
 ### DDS
 create_ip -vlnv [latest_ip dds_compiler] -module_name dds
+set_property CONFIG.Parameter_Entry "Hardware_Parameters" [get_ips dds]
+set_property CONFIG.PINC1 0 [get_ips dds]
 set_property CONFIG.DDS_Clock_Rate 250 [get_ips dds]
 set_property CONFIG.Mode_of_Operation "Standard" [get_ips dds]
 set_property CONFIG.Phase_Increment "Programmable" [get_ips dds]
 set_property CONFIG.Phase_offset "Programmable" [get_ips dds]
-set_property CONFIG.Resync "true" [get_ips dds]
-set_property CONFIG.PINC1 0 [get_ips dds]
-set_property CONFIG.Parameter_Entry "Hardware_Parameters" [get_ips dds]
 set_property CONFIG.Phase_Width 20 [get_ips dds]
 set_property CONFIG.Output_Width 14 [get_ips dds]
 set_property CONFIG.Noise_Shaping "None" [get_ips dds]
