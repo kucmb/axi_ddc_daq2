@@ -13,6 +13,8 @@ module ddc_core(
     output [63:0] ddc_out
 );
 
+    localparam LATENCY = 14;
+
     wire dds_valid;
     wire [31:0] dds_out;
 
@@ -33,7 +35,8 @@ module ddc_core(
     wire [28:0] out_q;
     
     // Valid buffering
-    reg [5:0] valid_buf;
+    reg [LATENCY-1:0] valid_buf;
+    reg p_conf = 0;
 
     assign cos_dds = dds_out[15:0];
     assign sin_dds = dds_out[29:16];
@@ -50,11 +53,23 @@ module ddc_core(
         .m_axis_data_tdata(dds_out) // cos [13:0], sin [29:16], 32 bit width
     );
 
-    // Valid
+    // Phase configured
     always @(posedge clk) begin
-        valid_buf <= {valid_buf[4:0], dds_valid};
+        if (valid_in)
+            p_conf <= 1;
+        else
+            p_conf <= p_conf;
     end
-    assign valid_out = valid_buf[5]; 
+    
+    // Valid generation
+    always @(posedge clk) begin
+        if (valid_in) begin
+            valid_buf <= 0;
+        end else begin
+            valid_buf <= {valid_buf[LATENCY-2:0], p_conf};
+        end
+    end
+    assign valid_out = valid_buf[LATENCY-1];
 
     // Multiplier 14 x 14 -> 28
     multiplier coscos_mult(
