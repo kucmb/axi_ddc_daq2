@@ -6,7 +6,7 @@ module ddc_core(
     // assuming [29:16] Q, [13:0] I
     input [31:0] data_in,
     input valid_in,
-    input [47:0] phase_in
+    input [47:0] phase_in,
 
     output valid_out,
     // valid width: 29 each. [60:32] Q, [28:0] I
@@ -40,12 +40,12 @@ module ddc_core(
     assign cos_data = data_in[13:0];
     assign sin_data = data_in[29:16];
 
-    assign data_out = {{3{out_q[28]}}, out_q, {3{out_i[28]}}, out_i};
+    assign ddc_out = {{3{out_q[28]}}, out_q, {3{out_i[28]}}, out_i};
 
     dds dds_inst(
         .aclk(clk),
-        .s_axis_phase_tvalid(valid_in),
-        .s_axis_phase_tdata(phase_in), // pinc [19:0], poff [43:24], 48 bit width
+        .s_axis_config_tvalid(valid_in),
+        .s_axis_config_tdata(phase_in), // pinc [19:0], poff [43:24], 48 bit width
         .m_axis_data_tvalid(dds_valid),
         .m_axis_data_tdata(dds_out) // cos [13:0], sin [29:16], 32 bit width
     );

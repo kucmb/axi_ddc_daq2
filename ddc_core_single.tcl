@@ -16,8 +16,8 @@ add_files -norecurse "./ddc_core.v"
 create_ip -vlnv [latest_ip dds_compiler] -module_name dds
 set_property CONFIG.DDS_Clock_Rate 250 [get_ips dds]
 set_property CONFIG.Mode_of_Operation "Standard" [get_ips dds]
-set_property CONFIG.Phase_Increment "Streaming" [get_ips dds]
-set_property CONFIG.Phase_offset "Streaming" [get_ips dds]
+set_property CONFIG.Phase_Increment "Programmable" [get_ips dds]
+set_property CONFIG.Phase_offset "Programmable" [get_ips dds]
 set_property CONFIG.Resync "true" [get_ips dds]
 set_property CONFIG.PINC1 0 [get_ips dds]
 set_property CONFIG.Parameter_Entry "Hardware_Parameters" [get_ips dds]
@@ -67,15 +67,15 @@ generate_target Simulation [get_files multiplier.xci]
 
 # Run
 ## Synthesis
-launch_runs synth_1
-wait_on_run synth_1
-open_run synth_1
-report_utilization -file "./utilization_synth.txt"
+#launch_runs synth_1
+#wait_on_run synth_1
+#open_run synth_1
+#report_utilization -file "./utilization_synth.txt"
 
 ## Implementation
-set_property strategy Performance_Retiming [get_runs impl_1]
-launch_runs impl_1 -to_step write_bitstream
-wait_on_run impl_1
-open_run impl_1
-report_timing_summary -file timing_impl.log
-report_utilization -file "./utilization_impl.txt"
+#set_property strategy Performance_Retiming [get_runs impl_1]
+#launch_runs impl_1 -to_step write_bitstream
+#wait_on_run impl_1
+#open_run impl_1
+#report_timing_summary -file timing_impl.log
+#report_utilization -file "./utilization_impl.txt"

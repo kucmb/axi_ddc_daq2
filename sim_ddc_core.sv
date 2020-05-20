@@ -14,7 +14,10 @@ module sim_ddc_core(
 
     // Output
     logic valid_out;
+    logic [63:0] ddc_out;
     logic [63:0]data_out;
+
+    assign data_out = ddc_out;
 
     // Feed to DDS compiler
     logic [19:0] pinc;
@@ -26,6 +29,7 @@ module sim_ddc_core(
     // Control data
     logic din_on;
     logic din_fin;
+    logic write_on;
 
     // for output convention
     logic [31:0] i_out;
@@ -53,10 +57,10 @@ module sim_ddc_core(
     task rst_gen();
         pinc = 0;
         poff = 0;
-        resync = 0;
         din_on = 0;
         din_fin = 0;
-        S_AXIS_PHASE_tvalid = 0;
+        valid_in = 0;
+        write_on = 0;
     endtask
     
     task file_open();
@@ -87,7 +91,6 @@ module sim_ddc_core(
         if (write_ready) begin
             write_ready = 0;
             $fclose(fd_dout);
-            $fclose(fd_phase);
         end
     endtask
         
@@ -102,35 +105,26 @@ module sim_ddc_core(
 
         #(STEP_SYS*10);
         @(posedge clk);
-        S_AXIS_PHASE_tvalid <= 1;
+        valid_in <= 1;
+        @(posedge clk);
+        valid_in <= 0;
         repeat(7) @(posedge clk);
         din_on <= 1;
+        repeat(7) @(posedge clk);
+        write_on <= 1;
         @(posedge clk);
         wait(finish);
 
-        S_AXIS_PHASE_tvalid <= 0;
+        valid_in <= 0;
 
         #(STEP_SYS*30);
         file_close();
         #(STEP_SYS*30);
         $finish;
     end
-    
+        
     always @(posedge clk) begin
-        if (M_AXIS_PHASE_tvalid && write_ready) begin
-            if (~finish_ph) begin
-                $fdisplay(fd_phase, "%b", M_AXIS_PHASE_tdata);
-                if (counter_ph == (SIM_LENGTH - 1)) begin
-                    finish_ph <= 1;
-                end else begin
-                    counter_ph <= counter_ph + 1;
-                end
-            end
-        end
-    end
-    
-    always @(posedge clk) begin
-        if (valid_out && write_ready) begin
+        if (write_on && write_ready) begin
             if (~finish) begin
                 $fdisplay(fd_dout, "%b", data_out);
                 if (counter == (SIM_LENGTH - 1)) begin
