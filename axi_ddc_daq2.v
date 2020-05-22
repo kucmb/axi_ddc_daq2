@@ -8,11 +8,12 @@ module axi_ddc_daq2 #
 (
     input wire dev_clk,
     input wire dev_rst,
-    input wire [31:0] data_in,
-    input wire valid_in,
+    input wire [31:0] data_in_0,
+    input wire [31:0] data_in_1,
+    input wire [31:0] data_in_2,
+    input wire [31:0] data_in_3,
 
-    output wire [79:0] data_out,
-    output wire [6:0] index_out,
+    output wire [95:0] data_out,
     output wire valid_out,
 
     // Ports of Axi Slave Bus Interface S00_AXI
@@ -45,14 +46,13 @@ module axi_ddc_daq2 #
     ) axi_ddc_daq2_core_inst (
         .dev_clk(dev_clk),
         .dev_rst(dev_rst),
-        .rd_en_first(rd_en_first),
-        .rd_en_second(rd_en_second),
-        .index_first(index_first),
-        .index_second(index_second),
-        .k_first(k_first),
-        .k_second(k_second),
-        .bypass_second(bypass_second),
-        .dout_mon(dout_mon),
+        .data_in_0(data_in_0),
+        .data_in_1(data_in_1),
+        .data_in_2(data_in_2),
+        .data_in_3(data_in_3),
+
+        .data_out(data_out),
+        .valid_out(valid_out),
 
         .S_AXI_ACLK(s00_axi_aclk),
         .S_AXI_ARESETN(s00_axi_aresetn),

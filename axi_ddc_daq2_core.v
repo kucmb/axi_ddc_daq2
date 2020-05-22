@@ -1,49 +1,56 @@
 
 `timescale 1 ns / 1 ps
 
-    module axi_ddc_daq2_core #
-    (
-        parameter integer C_S_AXI_DATA_WIDTH	= 32,
-        parameter integer C_S_AXI_ADDR_WIDTH	= 5
-    )
-    (
-        // Users to add ports here
-        input wire dev_clk,
-        input wire dev_rst,
+module axi_ddc_daq2_core #
+(
+    parameter integer C_S_AXI_DATA_WIDTH	= 32,
+    parameter integer C_S_AXI_ADDR_WIDTH	= 5,
+    parameter integer N_CH = 4
+)
+(
+    // Users to add ports here
+    input wire dev_clk,
+    input wire dev_rst,
 
-        input wire [31:0] data_in,
+    input wire [31:0] data_in_0,
+    input wire [31:0] data_in_1,
+    input wire [31:0] data_in_2,
+    input wire [31:0] data_in_3,
 
-        // User ports ends
+    output wire [95:0] data_out,
+    output wire valid_out,
 
-        // Global Clock Signal
-        input wire  S_AXI_ACLK,
-        input wire  S_AXI_ARESETN,
+    // User ports ends
 
-        input wire [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_AWADDR,
-        // Write channel Protection type. This signal indicates the
-            // privilege and security level of the transaction, and whether
-            // the transaction is a data access or an instruction access.
-        input wire [2 : 0] S_AXI_AWPROT,
-        input wire  S_AXI_AWVALID,
-        output wire  S_AXI_AWREADY,
-        input wire [C_S_AXI_DATA_WIDTH-1 : 0] S_AXI_WDATA,
-        input wire [(C_S_AXI_DATA_WIDTH/8)-1 : 0] S_AXI_WSTRB,
-        input wire  S_AXI_WVALID,
-        output wire  S_AXI_WREADY,
+    // Global Clock Signal
+    input wire  S_AXI_ACLK,
+    input wire  S_AXI_ARESETN,
 
-        output wire [1 : 0] S_AXI_BRESP,
-        output wire  S_AXI_BVALID,
-        input wire  S_AXI_BREADY,
-        
-        input wire [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_ARADDR,
-        input wire [2 : 0] S_AXI_ARPROT,
-        input wire  S_AXI_ARVALID,
-        output wire  S_AXI_ARREADY,
-        output wire [C_S_AXI_DATA_WIDTH-1 : 0] S_AXI_RDATA,
-        output wire [1 : 0] S_AXI_RRESP,
-        output wire  S_AXI_RVALID,
-        input wire  S_AXI_RREADY
-    );
+    input wire [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_AWADDR,
+    // Write channel Protection type. This signal indicates the
+        // privilege and security level of the transaction, and whether
+        // the transaction is a data access or an instruction access.
+    input wire [2 : 0] S_AXI_AWPROT,
+    input wire  S_AXI_AWVALID,
+    output wire  S_AXI_AWREADY,
+    input wire [C_S_AXI_DATA_WIDTH-1 : 0] S_AXI_WDATA,
+    input wire [(C_S_AXI_DATA_WIDTH/8)-1 : 0] S_AXI_WSTRB,
+    input wire  S_AXI_WVALID,
+    output wire  S_AXI_WREADY,
+
+    output wire [1 : 0] S_AXI_BRESP,
+    output wire  S_AXI_BVALID,
+    input wire  S_AXI_BREADY,
+    
+    input wire [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_ARADDR,
+    input wire [2 : 0] S_AXI_ARPROT,
+    input wire  S_AXI_ARVALID,
+    output wire  S_AXI_ARREADY,
+    output wire [C_S_AXI_DATA_WIDTH-1 : 0] S_AXI_RDATA,
+    output wire [1 : 0] S_AXI_RRESP,
+    output wire  S_AXI_RVALID,
+    input wire  S_AXI_RREADY
+);
 
     //////////////////////////////////////////////// Signal definitions
     // AXI4LITE signals
@@ -276,31 +283,157 @@
     end
 
     /////////////////////////////////////////////////////////////////// User logic
+    // Connection between modules
+    wire [63:0] ddc_out [0:N_CH_WIDTH-1];
+    wire [95:0] accum_out [0:N_CH_WIDTH-1];
+    reg [95:0] accum_out_buf [0:N_CH_WIDTH-1];
+    reg [95:0] data_out_buf;
+    reg valid_out_buf;
+    wire [N_CH_WIDTH-1:0] valid_ddc;
+    wire [N_CH_WIDTH-1:0] valid_accum;
+    
+
+
     // Address 0: channel
-    // Write strobe to channel register starts configuration of poff and pinc 
-    wire wr_ch;
-    assign wr_ch = (axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB] == 0);
+    // Address 1: pinc
+    // Address 2: podff
+    // Write strobe to channel register (0) starts writing configuration of poff and pinc to 
+    localparam N_CH_WIDTH = $clog2(N_CH);
+    wire wr_ch_axi;
+    assign wr_ch_axi = (axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB] == 0);
+    reg busy_ch_axi;
     reg busy_ch;
+    reg [1:0] busy_buf;
+    wire config_strb;
+    wire config_fin;
+    reg [17:0] accum_length;
+
+
+    reg [N_CH_WIDTH-1:0] ch_buf_axi;
+    reg [N_CH_WIDTH-1:0] ch_buf;
     reg [19:0] poff_buf;
     reg [19:0] pinc_buf;
     
 
     always @(posedge S_AXI_ACLK) begin
         if (S_AXI_ARESETN == 1'b0) begin
-            busy_ch <= 1'b0;
+            busy_ch_axi <= 1'b0;
+            ch_buf_axi <= 1'b0;
         end else begin
-            if (wr_ch) begin
-                busy_ch <= 1'b1;
+            if (wr_ch_axi) begin
+                busy_ch_axi <= 1'b1;
+                ch_buf_axi <= S_AXI_WDATA[N_CH_WIDTH-1:0];
             end else begin
-                // RESET LOGIC HERE
+                if (config_fin) begin
+                    busy_ch_axi <= 1'b0;
+                end
             end
         end
     end
 
+    // AXI to dev clk buffer
     always @(posedge dev_clk) begin
+        ch_buf <= ch_buf_axi;
         poff_buf <= slv_reg1[19:0];
         pinc_buf <= slv_reg2[19:0];
+        busy_ch <= busy_ch_axi;
     end
-    
 
-    endmodule
+    always @(posedge dev_clk) begin
+        busy_buf <= {busy_buf[0], busy_ch};
+    end
+    assign config_strb = (busy_buf == 2'b01);
+    assign config_fin = (busy_buf == 2'b11);
+
+
+    // Address 3: Accumulation length
+
+    always @(posedge dev_clk) begin
+        accum_length <= slv_reg3[17:0];
+    end
+
+
+    // Module generation
+    generate
+        genvar i;
+        for (i=0; i < N_CH; i=i+1) begin
+            ddc_quad ddc_quad_inst(
+                .clk(dev_clk),
+                .data_in_0(data_in_0),
+                .data_in_1(data_in_1),
+                .data_in_2(data_in_2),
+                .data_in_3(data_in_3),
+                .pinc(pinc_buf),
+                .poff(poff_buf),
+                .p_valid(config_strb && (ch_buf == i)),
+                .valid_out(valid_ddc[i]),
+                .data_out(ddc_out[i])
+            );
+
+            accumulator accum_inst_i(
+                .clk(dev_clk),
+                .rst(dev_rst),
+                .valid_in(valid_ddc[i]),
+                .length(accum_length),
+                .data_in(ddc_out[i][30:0]),
+                .valid_out(valid_accum[i]),
+                .data_out(accum_out[i][47:0])
+            );
+
+            accumulator accum_inst_q(
+                .clk(dev_clk),
+                .rst(dev_rst),
+                .valid_in(valid_ddc[i]),
+                .length(accum_length),
+                .data_in(ddc_out[i][62:32]),
+                .data_out(accum_out[i][95:48])
+            );
+        end
+    endgenerate
+
+    // Sequentialize
+    always @(posedge clk) begin
+        if (valid_accum[0]) begin
+            accum_out_buf <= accum_out;
+        end else begin
+            accum_out_buf <= accum_out_buf;
+        end
+    end
+
+    reg [N_CH_WIDTH-1:0] ch_cnt;
+    reg valid_seq;
+    wire fin_seq;
+
+    always @(posedge clk) begin
+        if (valid_accum[0]) begin
+            valid_seq <= 1;
+        end else if (fin_seq) begin
+            valid_seq <= 0;
+        end
+    end
+
+    assign fin_seq = (ch_cnt == (N_CH - 1));
+
+    always @(posedge clk) begin
+        if (valid_accum[0]) begin
+            ch_cnt <= 0;
+        end else if (valid_seq) begin
+            ch_cnt <= ch_cnt + 1;
+        end else begin
+            ch_cnt <= 0;
+        end
+    end
+
+    always @(posedge clk) begin
+        data_out_buf <= accum_out_buf[ch_cnt];
+    end
+
+    assign data_out = data_out_buf;
+
+    always @(posedge clk) begin
+        valid_out_buf <= valid_seq;
+    end
+
+    assign valid_out = valid_out_buf;
+
+endmodule
