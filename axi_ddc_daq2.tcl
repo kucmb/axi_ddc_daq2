@@ -1,6 +1,6 @@
 # FFT quad
 set ip_name "axi_ddc_daq2"
-create_project $ip_name "." -force
+create_project $ip_name "./test_ip" -force
 source ./util.tcl
 
 # file
@@ -8,104 +8,118 @@ set proj_fileset [get_filesets sources_1]
 add_files -norecurse -scan_for_includes -fileset $proj_fileset [list \
 "axi_ddc_daq2.v" \
 "axi_ddc_daq2_core.v" \
+"accumulator.v" \
+"ddc_core.v" \
+"ddc_quad.v" \
 ]
 
 set_property "top" "axi_ddc_daq2" $proj_fileset
 
-ipx::package_project -root_dir "." -vendor kuhep -library user -taxonomy /kuhep
+ipx::package_project -root_dir "./test_ip" -vendor kuhep -library user -taxonomy /kuhep
 set_property name $ip_name [ipx::current_core]
 set_property vendor_display_name {kuhep} [ipx::current_core]
 
 ################################################ IP generation
-# Block memory for the first frequency selector
-create_ip -vlnv [latest_ip blk_mem_gen] -module_name bram_ring
-set_property CONFIG.Memory_Type "Simple_Dual_Port_RAM" [get_ips bram_ring]
-set_property CONFIG.Assume_Synchronous_Clk "true" [get_ips bram_ring]
-set_property CONFIG.Write_Width_A 14 [get_ips bram_ring]
-set_property CONFIG.Write_Depth_A 128 [get_ips bram_ring]
-set_property CONFIG.Read_Width_A 14 [get_ips bram_ring]
-set_property CONFIG.Operating_Mode_A "READ_FIRST" [get_ips bram_ring]
+############### DDC QUAD
+### DDS
+create_ip -vlnv [latest_ip dds_compiler] -module_name dds
+set_property CONFIG.Parameter_Entry "Hardware_Parameters" [get_ips dds]
+set_property CONFIG.PINC1 0 [get_ips dds]
+set_property CONFIG.DDS_Clock_Rate 250 [get_ips dds]
+set_property CONFIG.Mode_of_Operation "Standard" [get_ips dds]
+set_property CONFIG.Phase_Increment "Programmable" [get_ips dds]
+set_property CONFIG.Phase_offset "Programmable" [get_ips dds]
+set_property CONFIG.Phase_Width 20 [get_ips dds]
+set_property CONFIG.Output_Width 14 [get_ips dds]
+set_property CONFIG.Noise_Shaping "None" [get_ips dds]
 
-# Block memory for the second frequency selector
-create_ip -vlnv [latest_ip blk_mem_gen] -module_name bram_ring_second
-set_property CONFIG.Memory_Type "Simple_Dual_Port_RAM" [get_ips bram_ring_second]
-set_property CONFIG.Assume_Synchronous_Clk "true" [get_ips bram_ring_second]
-set_property CONFIG.Write_Width_A 4 [get_ips bram_ring_second]
-set_property CONFIG.Write_Depth_A 128 [get_ips bram_ring_second]
-set_property CONFIG.Read_Width_A 4 [get_ips bram_ring_second]
-set_property CONFIG.Operating_Mode_A "READ_FIRST" [get_ips bram_ring_second]
+### DDC core
+#### Multiplier
+create_ip -vlnv [latest_ip mult_gen] -module_name multiplier
+set_property CONFIG.PortAWidth 14 [get_ips multiplier]
+set_property CONFIG.PortBWidth 14 [get_ips multiplier]
+set_property CONFIG.Multiplier_Construction "Use_Mults" [get_ips multiplier]
+set_property CONFIG.OptGoal "Area" [get_ips multiplier]
+set_property CONFIG.OutputWidthHigh 29 [get_ips multiplier]
+set_property CONFIG.PipeStages 3 [get_ips multiplier]
+set_property generate_synth_checkpoint 0 [get_files multiplier.xci]
 
-# Block memory for the temporal data storage
-create_ip -vlnv [latest_ip blk_mem_gen] -module_name blk_mem_data
-set_property CONFIG.Memory_Type "Simple_Dual_Port_RAM" [get_ips blk_mem_data]
-set_property CONFIG.Assume_Synchronous_Clk "true" [get_ips blk_mem_data]
-set_property CONFIG.Write_Width_A 64 [get_ips blk_mem_data]
-set_property CONFIG.Write_Depth_A 4096 [get_ips blk_mem_data]
-set_property CONFIG.Read_Width_A 64 [get_ips blk_mem_data]
-set_property CONFIG.Operating_Mode_A "READ_FIRST" [get_ips blk_mem_data]
+#### Adder
+create_ip -vlnv [latest_ip c_addsub] -module_name adder
+set_property CONFIG.A_Width 28 [get_ips adder]
+set_property CONFIG.B_Width 28 [get_ips adder]
+set_property CONFIG.Out_Width 29 [get_ips adder]
+set_property CONFIG.CE "false" [get_ips adder]
+set_property CONFIG.Latency 3 [get_ips adder]
+set_property generate_synth_checkpoint 0 [get_files adder.xci]
 
-# Block memory for the counter
-create_ip -vlnv [latest_ip blk_mem_gen] -module_name blk_mem_counter
-set_property CONFIG.Memory_Type "Simple_Dual_Port_RAM" [get_ips blk_mem_counter]
-set_property CONFIG.Assume_Synchronous_Clk "true" [get_ips blk_mem_counter]
-set_property CONFIG.Write_Width_A 5 [get_ips blk_mem_counter]
-set_property CONFIG.Write_Depth_A 128 [get_ips blk_mem_counter]
-set_property CONFIG.Read_Width_A 5 [get_ips blk_mem_counter]
-set_property CONFIG.Operating_Mode_A "READ_FIRST" [get_ips blk_mem_counter]
+#### Subtracter
+create_ip -vlnv [latest_ip c_addsub] -module_name subtracter
+set_property CONFIG.Add_Mode "Subtract" [get_ips subtracter]
+set_property CONFIG.A_Width 28 [get_ips subtracter]
+set_property CONFIG.B_Width 28 [get_ips subtracter]
+set_property CONFIG.Out_Width 29 [get_ips subtracter]
+set_property CONFIG.CE "false" [get_ips subtracter]
+set_property CONFIG.Latency 3 [get_ips subtracter]
+set_property generate_synth_checkpoint 0 [get_files subtracter.xci]
 
-# FIFO for the assert logic
-create_ip -vlnv [latest_ip fifo_generator] -module_name fifo_assert
-set_property CONFIG.Performance_Options "First_Word_Fall_Through" [get_ips fifo_assert]
-set_property CONFIG.Input_Data_Width 8 [get_ips fifo_assert]
-set_property CONFIG.Input_Depth 512 [get_ips fifo_assert]
-set_property CONFIG.Output_Data_Width 8 [get_ips fifo_assert]
-set_property CONFIG.Output_Depth 512 [get_ips fifo_assert]
+#### Adder for phase
+create_ip -vlnv [latest_ip c_addsub] -module_name adder_phase
+set_property CONFIG.A_Width 20 [get_ips adder_phase]
+set_property CONFIG.B_Width 20 [get_ips adder_phase]
+set_property CONFIG.Out_Width 20 [get_ips adder_phase]
+set_property CONFIG.CE "false" [get_ips adder_phase]
+set_property CONFIG.Latency 3 [get_ips adder_phase]
+set_property generate_synth_checkpoint 0 [get_files adder_phase.xci]
 
-# FFT for fft_second
-create_ip -vlnv [latest_ip xfft] -module_name xfft_second
-set_property CONFIG.transform_length 16 [get_ips xfft_second]
-set_property CONFIG.input_width 29 [get_ips xfft_second]
-set_property CONFIG.phase_factor_width 16 [get_ips xfft_second]
-set_property CONFIG.scaling_options "unscaled" [get_ips xfft_second]
-set_property CONFIG.rounding_modes "convergent_rounding" [get_ips xfft_second]
-set_property CONFIG.target_clock_frequency 300 [get_ips xfft_second]
-set_property CONFIG.target_data_throughput 300 [get_ips xfft_second]
-set_property CONFIG.xk_index true [get_ips xfft_second]
+#### 1st stage adder
+create_ip -vlnv [latest_ip c_addsub] -module_name adder_1st
+set_property CONFIG.A_Width 29 [get_ips adder_1st]
+set_property CONFIG.B_Width 29 [get_ips adder_1st]
+set_property CONFIG.Out_Width 30 [get_ips adder_1st]
+set_property CONFIG.CE "false" [get_ips adder_1st]
+set_property CONFIG.Latency 3 [get_ips adder_1st]
+set_property generate_synth_checkpoint 0 [get_files adder_1st.xci]
 
-# FIFO for fft_second
-create_ip -vlnv [latest_ip fifo_generator] -module_name fifo_second_index
-set_property CONFIG.Performance_Options {First_Word_Fall_Through} [get_ips fifo_second_index]
-set_property CONFIG.Input_Data_Width 7 [get_ips fifo_second_index]
-set_property CONFIG.Input_Depth 512 [get_ips fifo_second_index]
-set_property CONFIG.Output_Data_Width 7 [get_ips fifo_second_index]
-set_property CONFIG.Output_Depth 512 [get_ips fifo_second_index]
+#### 2nd stage adder
+create_ip -vlnv [latest_ip c_addsub] -module_name adder_2nd
+set_property CONFIG.A_Width 30 [get_ips adder_2nd]
+set_property CONFIG.B_Width 30 [get_ips adder_2nd]
+set_property CONFIG.Out_Width 31 [get_ips adder_2nd]
+set_property CONFIG.CE "false" [get_ips adder_2nd]
+set_property CONFIG.Latency 3 [get_ips adder_2nd]
+set_property generate_synth_checkpoint 0 [get_files adder_2nd.xci]
+
+############### Accumulator
+### Accumulator
+create_ip -vlnv [latest_ip c_accum] -module_name c_accum
+set_property CONFIG.Implementation {DSP48} [get_ips c_accum]
+set_property CONFIG.Input_Width {31} [get_ips c_accum]
+set_property CONFIG.Output_Width {48} [get_ips c_accum]
+set_property CONFIG.Latency_Configuration {Manual} [get_ips c_accum]
+set_property CONFIG.Latency {2} [get_ips c_accum]
+set_property CONFIG.SCLR {false} [get_ips c_accum]
+set_property CONFIG.Bypass {true} [get_ips c_accum]
+
 
 ################################################ Register XCI files
 # file groups
-ipx::add_file ./axi_freq_selector.srcs/sources_1/ip/bram_ring/bram_ring.xci \
+ipx::add_file dds.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::add_file ./axi_freq_selector.srcs/sources_1/ip/bram_ring_second/bram_ring_second.xci \
+ipx::add_file multiplier.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::add_file ./axi_freq_selector.srcs/sources_1/ip/blk_mem_data/blk_mem_data.xci \
+ipx::add_file adder.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::add_file ./axi_freq_selector.srcs/sources_1/ip/blk_mem_counter/blk_mem_counter.xci \
+ipx::add_file subtracter.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::add_file ./axi_freq_selector.srcs/sources_1/ip/fifo_assert/fifo_assert.xci \
+ipx::add_file adder_phase.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::add_file ./axi_freq_selector.srcs/sources_1/ip/fifo_second_index/fifo_second_index.xci \
+ipx::add_file adder_1st.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::add_file ./axi_freq_selector.srcs/sources_1/ip/xfft_second/xfft_second.xci \
+ipx::add_file adder_2nd.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-
-ipx::reorder_files -after ./axi_freq_selector.srcs/sources_1/ip/xfft_second/xfft_second.xci \
-../axi_freq_selector.v \
+ipx::add_file c_accum.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::reorder_files -before ../axi_freq_selector.v ../second_fft.v [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::reorder_files -before ../second_fft.v ../ring_rand_second.v [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::reorder_files -after ./axi_freq_selector.srcs/sources_1/ip/xfft_second/xfft_second.xci ../ring_rand.v [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::reorder_files -before ../ring_rand.v ../data_transfer.v [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::reorder_files -after ./axi_freq_selector.srcs/sources_1/ip/xfft_second/xfft_second.xci ../data_store.v [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::reorder_files -before ../axi_freq_selector.v ../axi_freq_selector_core.v [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
 
 # Interface
 ipx::infer_bus_interface dev_clk xilinx.com:signal:clock_rtl:1.0 [ipx::current_core]
