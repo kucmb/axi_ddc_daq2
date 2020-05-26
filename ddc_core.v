@@ -7,6 +7,7 @@ module ddc_core(
     input [31:0] data_in,
     input valid_in,
     input [47:0] phase_in,
+    input resync,
 
     output valid_out,
     // valid width: 29 each. [60:32] Q, [28:0] I
@@ -35,7 +36,7 @@ module ddc_core(
     wire [28:0] out_q;
     
     // Valid buffering
-    reg [LATENCY-1:0] valid_buf;
+    reg [LATENCY-1:0] valid_buf = 0;
     reg p_conf = 0;
 
     assign cos_dds = dds_out[15:0];
@@ -47,8 +48,8 @@ module ddc_core(
 
     dds dds_inst(
         .aclk(clk),
-        .s_axis_config_tvalid(valid_in),
-        .s_axis_config_tdata(phase_in), // pinc [19:0], poff [43:24], 48 bit width
+        .s_axis_phase_tvalid(valid_in),
+        .s_axis_phase_tdata({resync, phase_in}), // pinc [19:0], poff [43:24], 48 bit width
         .m_axis_data_tvalid(dds_valid),
         .m_axis_data_tdata(dds_out) // cos [13:0], sin [29:16], 32 bit width
     );
@@ -63,11 +64,7 @@ module ddc_core(
     
     // Valid generation
     always @(posedge clk) begin
-        if (valid_in) begin
-            valid_buf <= 0;
-        end else begin
-            valid_buf <= {valid_buf[LATENCY-2:0], p_conf};
-        end
+        valid_buf <= {valid_buf[LATENCY-2:0], p_conf};
     end
     assign valid_out = valid_buf[LATENCY-1];
 

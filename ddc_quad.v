@@ -12,16 +12,21 @@ module ddc_quad(
     input [19:0] pinc,
     input [19:0] poff,
     input p_valid,
+    input resync,
 
     output valid_out,
     output [63:0] data_out
 );
 
-    localparam LATENCY_P = 3;
+    localparam LATENCY_P = 4;
     localparam LATENCY_SUM = 6;
 
     wire valid_in_dds;
+    wire resync_dds;
     wire valid_out_ddc;
+
+    reg [19:0] pinc_buf;
+    reg [19:0] poff_buf;
 
     wire [19:0] poff_0;
     wire [19:0] poff_1;
@@ -39,7 +44,9 @@ module ddc_quad(
 
     // Valid signal management
     reg [LATENCY_P-1:0] p_valid_buf;
+    reg [LATENCY_P-1:0] resync_buf;
     reg [LATENCY_SUM-1:0] valid_out_buf;
+    reg configured = 0;
 
     // Sum
     wire [29:0] i_03;
@@ -52,9 +59,24 @@ module ddc_quad(
     assign data_out = {q_tot[30], q_tot, i_tot[30], i_tot};
 
     always @(posedge clk) begin
+        if (p_valid) begin
+            pinc_buf <= pinc;
+            poff_buf <= poff;
+        end
+    end
+
+    always @(posedge clk) begin
         p_valid_buf = {p_valid_buf[LATENCY_P-2:0], p_valid};
+        resync_buf = {resync_buf[LATENCY_P-2:0], resync};
     end
     assign valid_in_dds = p_valid_buf[LATENCY_P-1];
+    assign resync_dds = resync_buf[LATENCY_P-1];
+
+    always @(posedge clk) begin
+        if (valid_in_dds) begin
+            configured <= 1;
+        end
+    end
 
     always @(posedge clk) begin
         valid_out_buf = {valid_out_buf[LATENCY_SUM-2:0], valid_out_ddc};
@@ -62,35 +84,35 @@ module ddc_quad(
     assign valid_out = valid_out_buf[LATENCY_SUM-1];
 
     // Phase increment and offset calculation for quad-mode operation
-    assign pinc_x4 = {pinc[17:0], 2'b0};
-    assign pinc_x2 = {pinc[18:0], 1'b0};
-    assign pinc_x3 = pinc + pinc_x2;
-    
+    assign pinc_x4 = {pinc_buf[17:0], 2'b0};
+    assign pinc_x2 = {pinc_buf[18:0], 1'b0};
+    assign pinc_x3 = pinc_buf + pinc_x2;
+
     // phase adder
     adder_phase add_0(
         .clk(clk),
-        .a(poff),
+        .a(poff_buf),
         .b(20'b0),
         .s(poff_0)
     );
 
     adder_phase add_1(
         .clk(clk),
-        .a(poff),
-        .b(pinc),
+        .a(poff_buf),
+        .b(pinc_buf),
         .s(poff_1)
     );
 
     adder_phase add_2(
         .clk(clk),
-        .a(poff),
+        .a(poff_buf),
         .b(pinc_x2),
         .s(poff_2)
     );
 
     adder_phase add_3(
         .clk(clk),
-        .a(poff),
+        .a(poff_buf),
         .b(pinc_x3),
         .s(poff_3)
     );
@@ -99,7 +121,8 @@ module ddc_quad(
     ddc_core ddc_0(
         .clk(clk),
         .data_in(data_in_0),
-        .valid_in(valid_in_dds),
+        .valid_in(valid_in_dds | configured),
+        .resync(resync_dds),
         .phase_in({4'b0, poff_0, 4'b0, pinc_x4}),
         .valid_out(valid_out_ddc),
         .ddc_out(ddc_out_0)
@@ -108,7 +131,8 @@ module ddc_quad(
     ddc_core ddc_1(
         .clk(clk),
         .data_in(data_in_1),
-        .valid_in(valid_in_dds),
+        .resync(resync_dds),
+        .valid_in(valid_in_dds | configured),
         .phase_in({4'b0, poff_1, 4'b0, pinc_x4}),
         .ddc_out(ddc_out_1)
     );
@@ -116,7 +140,8 @@ module ddc_quad(
     ddc_core ddc_2(
         .clk(clk),
         .data_in(data_in_2),
-        .valid_in(valid_in_dds),
+        .resync(resync_dds),
+        .valid_in(valid_in_dds | configured),
         .phase_in({4'b0, poff_2, 4'b0, pinc_x4}),
         .ddc_out(ddc_out_2)
     );
@@ -124,7 +149,8 @@ module ddc_quad(
     ddc_core ddc_3(
         .clk(clk),
         .data_in(data_in_3),
-        .valid_in(valid_in_dds),
+        .resync(resync_dds),
+        .valid_in(valid_in_dds | configured),
         .phase_in({4'b0, poff_3, 4'b0, pinc_x4}),
         .ddc_out(ddc_out_3)
     );

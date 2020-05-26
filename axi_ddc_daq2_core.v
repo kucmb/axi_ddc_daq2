@@ -17,6 +17,8 @@ module axi_ddc_daq2_core #
     input wire [31:0] data_in_2,
     input wire [31:0] data_in_3,
 
+    input wire resync,
+
     output wire [95:0] data_out,
     output wire valid_out,
 
@@ -72,7 +74,7 @@ module axi_ddc_daq2_core #
     reg [C_S_AXI_DATA_WIDTH-1:0]    slv_reg1; // pinc
     reg [C_S_AXI_DATA_WIDTH-1:0]    slv_reg2; // poff
     reg [C_S_AXI_DATA_WIDTH-1:0]    slv_reg3; // rate
-    reg [C_S_AXI_DATA_WIDTH-1:0]    slv_reg4; 
+
     reg [C_S_AXI_DATA_WIDTH-1:0]    slv_reg5;
     reg [C_S_AXI_DATA_WIDTH-1:0]    slv_reg6;
     reg [C_S_AXI_DATA_WIDTH-1:0]    slv_reg7;
@@ -84,6 +86,7 @@ module axi_ddc_daq2_core #
     ////////////////////////////////////////////// User signals
     reg                             aw_en_org;  // Original aw_en that appears in the template
     wire                            aw_en;      // Expanded aw_en that waits user_wbusy deasserted
+    reg                             resync_soft_axi;
     wire                            user_wbusy;
     wire                            user_rbusy;
 
@@ -154,8 +157,9 @@ module axi_ddc_daq2_core #
         if ( S_AXI_ARESETN == 1'b0 ) begin
             slv_reg0 <= 0;
             slv_reg1 <= 0;
+            slv_reg2 <= 0;
             slv_reg3 <= 0;
-            slv_reg4 <= 0;
+            resync_soft_axi <= 0;
             slv_reg5 <= 0;
             slv_reg6 <= 0;
             slv_reg7 <= 0;
@@ -178,10 +182,13 @@ module axi_ddc_daq2_core #
                     for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
                         if ( S_AXI_WSTRB[byte_index] == 1 )
                             slv_reg3[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
-                3'h4:
-                    for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
-                        if ( S_AXI_WSTRB[byte_index] == 1 )
-                            slv_reg4[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
+                3'h4: begin
+                    if ( S_AXI_WSTRB[0] == 1) begin // first byte
+                        if (S_AXI_WDATA[0] == 1) begin // Soft resync
+                            resync_soft_axi <= 1;
+                        end
+                    end
+                end
                 3'h5:
                     for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
                         if ( S_AXI_WSTRB[byte_index] == 1 )
@@ -199,14 +206,14 @@ module axi_ddc_daq2_core #
                     slv_reg1 <= slv_reg1;
                     slv_reg2 <= slv_reg2;
                     slv_reg3 <= slv_reg3;
-                    slv_reg4 <= slv_reg4;
+                    resync_soft_axi <= 0;
                     slv_reg5 <= slv_reg5;
                     slv_reg6 <= slv_reg6;
                     slv_reg7 <= slv_reg7;
                 end
                 endcase
             end else begin
-                soft_reset <= 0;
+                resync_soft_axi <= 0;
             end
         end
     end
@@ -265,7 +272,7 @@ module axi_ddc_daq2_core #
             3'h1   : reg_data_out <= slv_reg1;
             3'h2   : reg_data_out <= slv_reg2;
             3'h3   : reg_data_out <= slv_reg3;
-            3'h4   : reg_data_out <= slv_reg4;
+            3'h4   : reg_data_out <= 0;
             3'h5   : reg_data_out <= slv_reg5;
             3'h6   : reg_data_out <= slv_reg6;
             3'h7   : reg_data_out <= slv_reg7;
@@ -284,21 +291,22 @@ module axi_ddc_daq2_core #
 
     /////////////////////////////////////////////////////////////////// User logic
     // Connection between modules
-    wire [63:0] ddc_out [0:N_CH_WIDTH-1];
-    wire [95:0] accum_out [0:N_CH_WIDTH-1];
-    reg [95:0] accum_out_buf [0:N_CH_WIDTH-1];
+    localparam N_CH_WIDTH = $clog2(N_CH);
+
+    wire [63:0] ddc_out [0:N_CH-1];
+    wire [95:0] accum_out [0:N_CH-1];
+    reg [95:0] accum_out_buf [0:N_CH-1];
     reg [95:0] data_out_buf;
     reg valid_out_buf;
-    wire [N_CH_WIDTH-1:0] valid_ddc;
-    wire [N_CH_WIDTH-1:0] valid_accum;
-    
+    wire [N_CH-1:0] valid_ddc;
+    wire [N_CH-1:0] valid_accum;
 
 
     // Address 0: channel
     // Address 1: pinc
     // Address 2: podff
     // Write strobe to channel register (0) starts writing configuration of poff and pinc to 
-    localparam N_CH_WIDTH = $clog2(N_CH);
+
     wire wr_ch_axi;
     assign wr_ch_axi = (axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB] == 0);
     reg busy_ch_axi;
@@ -320,7 +328,7 @@ module axi_ddc_daq2_core #
             busy_ch_axi <= 1'b0;
             ch_buf_axi <= 1'b0;
         end else begin
-            if (wr_ch_axi) begin
+            if (wr_ch_axi && slv_reg_wren) begin
                 busy_ch_axi <= 1'b1;
                 ch_buf_axi <= S_AXI_WDATA[N_CH_WIDTH-1:0];
             end else begin
@@ -331,11 +339,13 @@ module axi_ddc_daq2_core #
         end
     end
 
+    assign user_wbusy = busy_ch_axi;
+
     // AXI to dev clk buffer
     always @(posedge dev_clk) begin
         ch_buf <= ch_buf_axi;
-        poff_buf <= slv_reg1[19:0];
-        pinc_buf <= slv_reg2[19:0];
+        pinc_buf <= slv_reg1[19:0];
+        poff_buf <= slv_reg2[19:0];
         busy_ch <= busy_ch_axi;
     end
 
@@ -352,6 +362,13 @@ module axi_ddc_daq2_core #
         accum_length <= slv_reg3[17:0];
     end
 
+    // Address 4: software resync
+    reg [1:0] resync_soft_buf;
+    wire resync_soft;
+    always @(posedge dev_clk) begin
+        resync_soft_buf <= {resync_soft_buf[0], resync_soft_axi};
+    end
+    assign resync_soft = (resync_soft_buf == 2'b01);
 
     // Module generation
     generate
@@ -366,6 +383,7 @@ module axi_ddc_daq2_core #
                 .pinc(pinc_buf),
                 .poff(poff_buf),
                 .p_valid(config_strb && (ch_buf == i)),
+                .resync(resync | resync_soft),
                 .valid_out(valid_ddc[i]),
                 .data_out(ddc_out[i])
             );
@@ -392,11 +410,12 @@ module axi_ddc_daq2_core #
     endgenerate
 
     // Sequentialize
-    always @(posedge clk) begin
+    integer j;
+    always @(posedge dev_clk) begin
         if (valid_accum[0]) begin
-            accum_out_buf <= accum_out;
-        end else begin
-            accum_out_buf <= accum_out_buf;
+            for (j=0; j < N_CH; j = j+1) begin
+                accum_out_buf[j] <= accum_out[j];
+            end
         end
     end
 
@@ -404,7 +423,7 @@ module axi_ddc_daq2_core #
     reg valid_seq;
     wire fin_seq;
 
-    always @(posedge clk) begin
+    always @(posedge dev_clk) begin
         if (valid_accum[0]) begin
             valid_seq <= 1;
         end else if (fin_seq) begin
@@ -414,7 +433,7 @@ module axi_ddc_daq2_core #
 
     assign fin_seq = (ch_cnt == (N_CH - 1));
 
-    always @(posedge clk) begin
+    always @(posedge dev_clk) begin
         if (valid_accum[0]) begin
             ch_cnt <= 0;
         end else if (valid_seq) begin
@@ -424,13 +443,13 @@ module axi_ddc_daq2_core #
         end
     end
 
-    always @(posedge clk) begin
+    always @(posedge dev_clk) begin
         data_out_buf <= accum_out_buf[ch_cnt];
     end
 
     assign data_out = data_out_buf;
 
-    always @(posedge clk) begin
+    always @(posedge dev_clk) begin
         valid_out_buf <= valid_seq;
     end
 

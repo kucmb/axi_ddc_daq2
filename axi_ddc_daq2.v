@@ -12,6 +12,7 @@ module axi_ddc_daq2 #
     input wire [31:0] data_in_1,
     input wire [31:0] data_in_2,
     input wire [31:0] data_in_3,
+    input wire resync,
 
     output wire [95:0] data_out,
     output wire valid_out,
@@ -50,6 +51,7 @@ module axi_ddc_daq2 #
         .data_in_1(data_in_1),
         .data_in_2(data_in_2),
         .data_in_3(data_in_3),
+        .resync(resync),
 
         .data_out(data_out),
         .valid_out(valid_out),

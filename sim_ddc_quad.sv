@@ -39,6 +39,7 @@ module sim_ddc_quad(
     logic write_ready = 0;
     logic [$clog2(SIM_LENGTH)-1:0] counter = 0;
     logic finish = 0;
+    logic resync = 0;
 
     // read setting
     integer fd_p;
