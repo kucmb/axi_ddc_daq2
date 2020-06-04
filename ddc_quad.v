@@ -199,4 +199,39 @@ module ddc_quad(
         .s(q_tot)
     );
 
+    wire [7:0] s_axis_config_tdata = 8'b0;
+    wire s_axis_config_tvalid = 1'b0;
+    wire s_axis_config_tready;
+    wire [31:0] s_axis_data_tdata = data_in_0;
+    wire s_axis_data_tvalid = 1'b1;
+    wire s_axis_data_tready;
+    wire s_axis_data_tlast = 1'b0;
+    wire [63:0] m_axis_data_tdata;
+    wire [15:0] m_axis_data_tuser;
+    wire m_axis_data_tvalid;
+    wire m_axis_data_tready = 1'b1;
+    wire m_axis_data_tlast;
+    
+    xfft_0 xfft_test (
+        .aclk(clk),
+        .s_axis_config_tdata(s_axis_config_tdata),
+        .s_axis_config_tvalid(s_axis_config_tvalid),
+        .s_axis_config_tready(s_axis_config_tready),
+        .s_axis_data_tdata(s_axis_data_tdata),
+        .s_axis_data_tvalid(s_axis_data_tvalid),
+        .s_axis_data_tready(s_axis_data_tready),
+        .s_axis_data_tlast(s_axis_data_tlast),
+        .m_axis_data_tdata(m_axis_data_tdata),
+        .m_axis_data_tuser(m_axis_data_tuser),
+        .m_axis_data_tvalid(m_axis_data_tvalid),
+        .m_axis_data_tready(m_axis_data_tready),
+        .m_axis_data_tlast(m_axis_data_tlast),
+        .event_frame_started(),
+        .event_tlast_unexpected(),
+        .event_tlast_missing(),
+        .event_status_channel_halt(),
+        .event_data_in_channel_halt(),
+        .event_data_out_channel_halt()
+);
+
 endmodule

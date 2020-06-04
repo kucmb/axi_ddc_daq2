@@ -124,6 +124,7 @@ ipx::add_file ./axi_ddc_daq2.srcs/sources_1/ip/c_accum/c_accum.xci \
 
 # Reordering
 ipx::reorder_files -after ./axi_ddc_daq2.srcs/sources_1/ip/c_accum/c_accum.xci ../axi_ddc_daq2.v [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
+ipx::reorder_files -after ../ddc_quad.v ../axi_ddc_daq2_core.v [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
 
 # Interface
 ipx::infer_bus_interface dev_clk xilinx.com:signal:clock_rtl:1.0 [ipx::current_core]

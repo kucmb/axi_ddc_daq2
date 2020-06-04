@@ -371,9 +371,10 @@ module axi_ddc_daq2_core #
     assign resync_soft = (resync_soft_buf == 2'b01);
 
     // Module generation
+
+    genvar i;
     generate
-        genvar i;
-        for (i=0; i < N_CH; i=i+1) begin
+        for(i=0;i<N_CH;i=i+1) begin:ddc_accm
             ddc_quad ddc_quad_inst(
                 .clk(dev_clk),
                 .data_in_0(data_in_0),
@@ -382,7 +383,7 @@ module axi_ddc_daq2_core #
                 .data_in_3(data_in_3),
                 .pinc(pinc_buf),
                 .poff(poff_buf),
-                .p_valid(config_strb && (ch_buf == i)),
+                .p_valid(config_strb & (ch_buf == i)),
                 .resync(resync | resync_soft),
                 .valid_out(valid_ddc[i]),
                 .data_out(ddc_out[i])

@@ -86,6 +86,10 @@ set_property CONFIG.Latency 3 [get_ips adder_2nd]
 set_property generate_synth_checkpoint 0 [get_files adder_2nd.xci]
 
 
+#### xfft (debug)
+create_ip -vlnv [latest_ip xfft] -module_name xfft_0 
+set_property -dict [list CONFIG.target_data_throughput {250} CONFIG.input_width {14} CONFIG.scaling_options {unscaled} CONFIG.rounding_modes {convergent_rounding} CONFIG.xk_index {true} CONFIG.number_of_stages_using_block_ram_for_data_and_phase_factors {3}] [get_ips xfft_0]
+
 
 set_property top ddc_quad [current_fileset]
 

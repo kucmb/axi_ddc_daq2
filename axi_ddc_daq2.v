@@ -3,7 +3,8 @@
 module axi_ddc_daq2 #
 (
     parameter integer C_S00_AXI_DATA_WIDTH = 32,
-    parameter integer C_S00_AXI_ADDR_WIDTH = 5
+    parameter integer C_S00_AXI_ADDR_WIDTH = 5,
+    parameter integer N_CH = 4
 )
 (
     input wire dev_clk,
@@ -43,7 +44,8 @@ module axi_ddc_daq2 #
 
     axi_ddc_daq2_core # ( 
         .C_S_AXI_DATA_WIDTH(C_S00_AXI_DATA_WIDTH),
-        .C_S_AXI_ADDR_WIDTH(C_S00_AXI_ADDR_WIDTH)
+        .C_S_AXI_ADDR_WIDTH(C_S00_AXI_ADDR_WIDTH),
+        .N_CH(N_CH)
     ) axi_ddc_daq2_core_inst (
         .dev_clk(dev_clk),
         .dev_rst(dev_rst),
