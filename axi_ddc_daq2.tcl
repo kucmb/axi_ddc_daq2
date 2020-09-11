@@ -105,25 +105,25 @@ set_property CONFIG.Bypass {true} [get_ips c_accum]
 
 ################################################ Register XCI files
 # file groups
-ipx::add_file ./axi_ddc_daq2.srcs/sources_1/ip/dds/dds.xci \
+ipx::add_file axi_ddc_daq2.srcs/sources_1/ip/dds/dds.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::add_file ./axi_ddc_daq2.srcs/sources_1/ip/multiplier/multiplier.xci \
+ipx::add_file axi_ddc_daq2.srcs/sources_1/ip/multiplier/multiplier.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::add_file ./axi_ddc_daq2.srcs/sources_1/ip/adder/adder.xci \
+ipx::add_file axi_ddc_daq2.srcs/sources_1/ip/adder/adder.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::add_file ./axi_ddc_daq2.srcs/sources_1/ip/subtracter/subtracter.xci \
+ipx::add_file axi_ddc_daq2.srcs/sources_1/ip/subtracter/subtracter.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::add_file ./axi_ddc_daq2.srcs/sources_1/ip/adder_phase/adder_phase.xci \
+ipx::add_file axi_ddc_daq2.srcs/sources_1/ip/adder_phase/adder_phase.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::add_file ./axi_ddc_daq2.srcs/sources_1/ip/adder_1st/adder_1st.xci \
+ipx::add_file axi_ddc_daq2.srcs/sources_1/ip/adder_1st/adder_1st.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::add_file ./axi_ddc_daq2.srcs/sources_1/ip/adder_2nd/adder_2nd.xci \
+ipx::add_file axi_ddc_daq2.srcs/sources_1/ip/adder_2nd/adder_2nd.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
-ipx::add_file ./axi_ddc_daq2.srcs/sources_1/ip/c_accum/c_accum.xci \
+ipx::add_file axi_ddc_daq2.srcs/sources_1/ip/c_accum/c_accum.xci \
 [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
 
 # Reordering
-ipx::reorder_files -after ./axi_ddc_daq2.srcs/sources_1/ip/c_accum/c_accum.xci ../axi_ddc_daq2.v [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
+ipx::reorder_files -after axi_ddc_daq2.srcs/sources_1/ip/c_accum/c_accum.xci ../axi_ddc_daq2.v [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
 
 # Interface
 ipx::infer_bus_interface dev_clk xilinx.com:signal:clock_rtl:1.0 [ipx::current_core]
