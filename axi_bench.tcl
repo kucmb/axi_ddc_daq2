@@ -26,6 +26,10 @@ set_property CONFIG.INTERFACE_MODE {MASTER} [get_bd_cells axi_vip]
 create_bd_cell -type ip -vlnv [latest_ip axi_interconnect] axi_interconnect
 set_property CONFIG.NUM_MI {1} [get_bd_cells axi_interconnect]
 
+### XFFT (test)
+create_bd_cell -type ip -vlnv [latest_ip xfft] xfft_0
+set_property -dict [list CONFIG.target_data_throughput {250} CONFIG.input_width {14} CONFIG.scaling_options {unscaled} CONFIG.rounding_modes {convergent_rounding} CONFIG.xk_index {true} CONFIG.number_of_stages_using_block_ram_for_data_and_phase_factors {3}] [get_bd_cells xfft_0]
+
 
 ## Connection
 ### Port definition
@@ -83,6 +87,12 @@ connect_bd_net [get_bd_ports data_in_3] [get_bd_pins axi_ddc_daq2/data_in_3]
 connect_bd_net [get_bd_ports data_out] [get_bd_pins axi_ddc_daq2/data_out]
 connect_bd_net [get_bd_ports valid_out] [get_bd_pins axi_ddc_daq2/valid_out]
 connect_bd_net [get_bd_ports resync] [get_bd_pins axi_ddc_daq2/resync]
+
+### FFT (test)
+connect_bd_net [get_bd_ports dev_clk] [get_bd_pins xfft_0/aclk]
+make_bd_intf_pins_external  [get_bd_intf_pins xfft_0/S_AXIS_CONFIG]
+make_bd_intf_pins_external  [get_bd_intf_pins xfft_0/S_AXIS_DATA]
+make_bd_intf_pins_external  [get_bd_intf_pins xfft_0/M_AXIS_DATA]
 
 
 ## Project

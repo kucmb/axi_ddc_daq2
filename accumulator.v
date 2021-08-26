@@ -52,7 +52,7 @@ module accumulator #(
     assign counter_max = (counter == (length - 1));
 
     // Accumulator
-    c_accum accum_inst(
+    c_accum_dd2 accum_inst(
         .clk(clk),
         .bypass(bypass),
         .b(data_in),

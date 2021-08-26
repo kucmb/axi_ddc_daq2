@@ -46,7 +46,7 @@ module ddc_core(
 
     assign ddc_out = {{3{out_q[28]}}, out_q, {3{out_i[28]}}, out_i};
 
-    dds dds_inst(
+    dds_dd2 dds_inst(
         .aclk(clk),
         .s_axis_phase_tvalid(valid_in),
         .s_axis_phase_tdata({resync, phase_in}), // pinc [19:0], poff [43:24], 48 bit width
@@ -69,28 +69,28 @@ module ddc_core(
     assign valid_out = valid_buf[LATENCY-1];
 
     // Multiplier 14 x 14 -> 28
-    multiplier coscos_mult(
+    multiplier_dd2 coscos_mult(
         .clk(clk),
         .a(cos_data),
         .b(cos_dds),
         .p(coscos)
     );
 
-    multiplier cossin_mult(
+    multiplier_dd2 cossin_mult(
         .clk(clk),
         .a(cos_data),
         .b(sin_dds),
         .p(cossin)
     );
 
-    multiplier sincos_mult(
+    multiplier_dd2 sincos_mult(
         .clk(clk),
         .a(sin_data),
         .b(cos_dds),
         .p(sincos)
     );
 
-    multiplier sinsin_mult(
+    multiplier_dd2 sinsin_mult(
         .clk(clk),
         .a(sin_data),
         .b(sin_dds),
@@ -98,14 +98,14 @@ module ddc_core(
     );
 
     // Adder 28 + 28 -> 29
-    adder sum_i(
+    adder_dd2 sum_i(
         .clk(clk),
         .a(coscos),
         .b(sinsin),
         .s(out_i)
     );
 
-    subtracter sub_q(
+    subtracter_dd2 sub_q(
         .clk(clk),
         .a(sincos),
         .b(cossin),

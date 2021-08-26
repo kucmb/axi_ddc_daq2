@@ -89,28 +89,28 @@ module ddc_quad(
     assign pinc_x3 = pinc_buf + pinc_x2;
 
     // phase adder
-    adder_phase add_0(
+    adder_phase_dd2 add_0(
         .clk(clk),
         .a(poff_buf),
         .b(20'b0),
         .s(poff_0)
     );
 
-    adder_phase add_1(
+    adder_phase_dd2 add_1(
         .clk(clk),
         .a(poff_buf),
         .b(pinc_buf),
         .s(poff_1)
     );
 
-    adder_phase add_2(
+    adder_phase_dd2 add_2(
         .clk(clk),
         .a(poff_buf),
         .b(pinc_x2),
         .s(poff_2)
     );
 
-    adder_phase add_3(
+    adder_phase_dd2 add_3(
         .clk(clk),
         .a(poff_buf),
         .b(pinc_x3),
@@ -157,42 +157,42 @@ module ddc_quad(
 
 
     // Output adder
-    adder_1st add_i_03(
+    adder_1st_dd2 add_i_03(
         .clk(clk),
         .a(ddc_out_0[28:0]),
         .b(ddc_out_3[28:0]),
         .s(i_03)
     );
 
-    adder_1st add_q_03(
+    adder_1st_dd2 add_q_03(
         .clk(clk),
         .a(ddc_out_0[60:32]),
         .b(ddc_out_3[60:32]),
         .s(q_03)
     );
 
-    adder_1st add_i_12(
+    adder_1st_dd2 add_i_12(
         .clk(clk),
         .a(ddc_out_1[28:0]),
         .b(ddc_out_2[28:0]),
         .s(i_12)
     );
 
-    adder_1st add_q_12(
+    adder_1st_dd2 add_q_12(
         .clk(clk),
         .a(ddc_out_1[60:32]),
         .b(ddc_out_2[60:32]),
         .s(q_12)
     );
 
-    adder_2nd add_i_tot(
+    adder_2nd_dd2 add_i_tot(
         .clk(clk),
         .a(i_03),
         .b(i_12),
         .s(i_tot)
     );
 
-    adder_2nd add_q_tot(
+    adder_2nd_dd2 add_q_tot(
         .clk(clk),
         .a(q_03),
         .b(q_12),
@@ -211,27 +211,5 @@ module ddc_quad(
     wire m_axis_data_tvalid;
     wire m_axis_data_tready = 1'b1;
     wire m_axis_data_tlast;
-    
-    xfft_0 xfft_test (
-        .aclk(clk),
-        .s_axis_config_tdata(s_axis_config_tdata),
-        .s_axis_config_tvalid(s_axis_config_tvalid),
-        .s_axis_config_tready(s_axis_config_tready),
-        .s_axis_data_tdata(s_axis_data_tdata),
-        .s_axis_data_tvalid(s_axis_data_tvalid),
-        .s_axis_data_tready(s_axis_data_tready),
-        .s_axis_data_tlast(s_axis_data_tlast),
-        .m_axis_data_tdata(m_axis_data_tdata),
-        .m_axis_data_tuser(m_axis_data_tuser),
-        .m_axis_data_tvalid(m_axis_data_tvalid),
-        .m_axis_data_tready(m_axis_data_tready),
-        .m_axis_data_tlast(m_axis_data_tlast),
-        .event_frame_started(),
-        .event_tlast_unexpected(),
-        .event_tlast_missing(),
-        .event_status_channel_halt(),
-        .event_data_in_channel_halt(),
-        .event_data_out_channel_halt()
-);
 
 endmodule
